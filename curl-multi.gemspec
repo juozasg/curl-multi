@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   # autorequire = 
   # bindir= bin
   # cert_chain= 
-  s.date = "2008-06-02 00:00:00 -07:00"
+  s.date = "Tue Nov 11 02:57:00 -07:00 2009"
   # default_executable=
   s.add_dependency "RubyInline", [">= 3.6.2"] 
   s.add_dependency "curb", [">= 0.1.2"] 
