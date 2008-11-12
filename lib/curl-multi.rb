@@ -83,6 +83,8 @@ module Curl
   end
 
   class Multi
+    attr_accessor :user_agent, :follow_location, :max_redirects
+    
     def size() @handles.size end
 
     def inspect() '{Curl::Multi' + @handles.map{|h| ' '+h.url}.join + '}' end
@@ -136,6 +138,9 @@ module Curl
 
     def initialize
       @handles = []
+      @user_agent = ""
+      @follow_location = 0
+      @max_redirects = -1
     end
 
     # Add a URL to the queue of items to fetch
@@ -185,6 +190,7 @@ module Curl
         #define CHECKN(e) CHECK(!(e))
 
         ID id_initialize, id_done, id_add_chunk, id_size;
+        ID id_user_agent, id_follow_location, id_max_redirects;
       end
 
       builder.c_raw_singleton <<-end
@@ -205,6 +211,10 @@ module Curl
           id_done = rb_intern("done");
           id_add_chunk = rb_intern("add_chunk");
           id_size = rb_intern("size");
+          
+          id_user_agent = rb_intern("user_agent");
+          id_follow_location = rb_intern("follow_location");
+          id_max_redirects = rb_intern("max_redirects");
 
           /* must be called at least once before any other curl functions */
           r = curl_global_init(CURL_GLOBAL_ALL);
@@ -239,12 +249,32 @@ module Curl
           /* We start getting errors if we have too many open connections at
           once, so make a hard limit. */
           if (FIX2INT(rb_funcall(self, id_size, 0)) > 500) return Qnil;
+           
+          /* get the setopt options */
+          VALUE user_agent = rb_funcall(self, id_user_agent, 0);
+          VALUE follow_location = rb_funcall(self, id_follow_location, 0);
+          VALUE max_redirects = rb_funcall(self, id_max_redirects, 0);
 
+          /* check types */
+          Check_Type(user_agent, T_STRING);
+          Check_Type(follow_location, T_FIXNUM);
+          Check_Type(max_redirects, T_FIXNUM);
+          
+          /* convert to C types */
+          char* c_user_agent = StringValuePtr(user_agent);
+          int i_follow_location = FIX2INT(follow_location);
+          int i_max_redirects = FIX2INT(max_redirects);
+                    
           CURL *easy_handle = curl_easy_init();
           char *c_url = StringValuePtr(url);
 
           /* Pass it the URL */
           curl_easy_setopt(easy_handle, CURLOPT_URL, c_url);
+          
+          /* Set user options */
+          curl_easy_setopt(easy_handle, CURLOPT_FOLLOWLOCATION, i_follow_location);
+          curl_easy_setopt(easy_handle, CURLOPT_MAXREDIRS, i_max_redirects);
+          curl_easy_setopt(easy_handle, CURLOPT_USERAGENT, c_user_agent);
 
           /* GET or POST? */
           if (body != Qnil) {
